@@ -28,6 +28,14 @@ fun ScheduleScreen(
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    var searchQuery by remember { mutableStateOf(selectedGroup) }
+
+    // синхронизация при смене группы извне (например из Favorites)
+    LaunchedEffect(selectedGroup) {
+        searchQuery = selectedGroup
+    }
+
+
     // Загрузка списка групп
     LaunchedEffect(Unit) {
         try {
@@ -85,15 +93,21 @@ fun ScheduleScreen(
                 .padding(horizontal = 16.dp)
         ) {
 
+            val filteredGroups = groups.filter {
+                it.groupName.contains(searchQuery, ignoreCase = true)
+            }
+
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded }
             ) {
 
                 OutlinedTextField(
-                    value = selectedGroup,
-                    onValueChange = {},
-                    readOnly = true,
+                    value = searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                        expanded = true
+                    },
                     label = { Text("Group") },
                     modifier = Modifier
                         .menuAnchor()
@@ -104,14 +118,23 @@ fun ScheduleScreen(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
-                    groups.forEach { group ->
+
+                    if (filteredGroups.isEmpty()) {
                         DropdownMenuItem(
-                            text = { Text(group.groupName) },
-                            onClick = {
-                                onGroupSelected(group.groupName)
-                                expanded = false
-                            }
+                            text = { Text("Ничего не найдено") },
+                            onClick = { }
                         )
+                    } else {
+                        filteredGroups.forEach { group ->
+                            DropdownMenuItem(
+                                text = { Text(group.groupName) },
+                                onClick = {
+                                    onGroupSelected(group.groupName)
+                                    searchQuery = group.groupName
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
