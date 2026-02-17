@@ -1,5 +1,6 @@
 package com.example.collegeschedule.ui.schedule
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
@@ -14,13 +15,12 @@ import com.example.collegeschedule.data.dto.ScheduleByDateDto
 import com.example.collegeschedule.data.network.RetrofitInstance
 import retrofit2.HttpException
 import java.io.IOException
-import com.google.gson.Gson
-import com.example.collegeschedule.data.dto.ErrorResponse
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
+import com.example.collegeschedule.utils.getForwardWeekRange
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -68,10 +68,14 @@ fun ScheduleScreen(
         try {
             error = null
 
+            val (start, end) = getForwardWeekRange()
+            Log.d("DATES", "Start: $start End: $end")
+            Log.d("GROUP_DEBUG", "Selected group: '$selectedGroup'")
+
             schedule = RetrofitInstance.api.getSchedule(
                 selectedGroup,
-                "2026-01-12",
-                "2026-01-17"
+                start,
+                end
             )
 
         } catch (e: IOException) {
