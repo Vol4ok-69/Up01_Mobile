@@ -11,6 +11,10 @@ import androidx.compose.ui.unit.dp
 import com.example.collegeschedule.data.dto.GroupDto
 import com.example.collegeschedule.data.dto.ScheduleByDateDto
 import com.example.collegeschedule.data.network.RetrofitInstance
+import retrofit2.HttpException
+import java.io.IOException
+import com.google.gson.Gson
+import com.example.collegeschedule.data.dto.ErrorResponse
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,25 +44,58 @@ fun ScheduleScreen(
     LaunchedEffect(Unit) {
         try {
             loading = true
+            error = null
+
             groups = RetrofitInstance.api.getGroups()
+
+        } catch (e: IOException) {
+            error = "Нет подключения к серверу"
+
+        } catch (e: HttpException) {
+            error = "Ошибка загрузки списка групп"
+
         } catch (e: Exception) {
-            error = e.message
+            error = "Непредвиденная ошибка"
         } finally {
             loading = false
         }
     }
 
+
     // Загрузка расписания при смене группы
     LaunchedEffect(selectedGroup) {
         try {
             loading = true
+            error = null
+
             schedule = RetrofitInstance.api.getSchedule(
                 selectedGroup,
                 "2026-01-12",
                 "2026-01-17"
             )
+
+        } catch (e: IOException) {
+            error = "Нет подключения к серверу"
+
+        } catch (e: HttpException) {
+
+            val errorBody = e.response()?.errorBody()?.string()
+
+            val message = try {
+                Gson().fromJson(errorBody, ErrorResponse::class.java)?.error
+            } catch (_: Exception) {
+                null
+            }
+
+            error = message ?: when (e.code()) {
+                400 -> "Некорректный запрос"
+                404 -> "Группа не найдена"
+                500 -> "Ошибка сервера"
+                else -> "Неизвестная ошибка"
+            }
+
         } catch (e: Exception) {
-            error = e.message
+            error = "Произошла непредвиденная ошибка"
         } finally {
             loading = false
         }
@@ -143,7 +180,21 @@ fun ScheduleScreen(
 
             when {
                 loading -> CircularProgressIndicator()
-                error != null -> Text("Error: $error")
+                error != null -> {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = error!!,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+
                 else -> ScheduleList(schedule)
             }
         }
